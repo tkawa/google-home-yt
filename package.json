@@ -1,0 +1,14 @@
+{
+  "name": "google-home-yt",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "tkawa",
+  "license": "ISC",
+  "dependencies": {
+    "google-home-notifier": "^1.2.0"
+  }
+}
