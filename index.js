@@ -3,11 +3,23 @@ const express = require('express')
 const notifier = require('google-home-notifier')
 const ngrok = require('ngrok')
 const bodyParser = require('body-parser')
+const GoogleSpreadsheet = require('google-spreadsheet')
+const credentials = require('./credentials.json')
+const config = require('./config.json')
+
 const app = express()
 const exec = require('child_process').exec
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
+const logSheet = new GoogleSpreadsheet(config.sheetId)
 
 const serverPort = 8091
+
+var sheet
+logSheet.useServiceAccountAuth(credentials, function (err) {
+  logSheet.getInfo(function (err, data) {
+    sheet = data.worksheets[0]
+  })
+})
 
 app.post('/google-home-yt', urlencodedParser, function (req, res) {
   if (!req.body) return res.sendStatus(400)
@@ -73,5 +85,17 @@ app.listen(serverPort, function () {
     console.log('POST example:')
     console.log('curl -X POST -d "v=wUpItG7dOGU" ' + url + '/google-home-yt')
     console.log('curl -X POST ' + url + '/google-home-playlist')
+    sheet.getCells({
+      'min-row': 1,
+      'max-row': 1,
+      'min-col': 1,
+      'max-col': 1,
+      'return-empty': true
+    }, function (error, cells) {
+      var cell = cells[0]
+      cell.value = url + '/google-home-playlist'
+      cell.save()
+      console.log('spread sheet update successful!!')
+    })
   })
 })

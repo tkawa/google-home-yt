@@ -9,6 +9,7 @@
   "author": "tkawa",
   "license": "ISC",
   "dependencies": {
-    "google-home-notifier": "^1.2.0"
+    "google-home-notifier": "^1.2.0",
+    "google-spreadsheet": "^2.0.5"
   }
 }
