@@ -3,6 +3,7 @@ const express = require('express')
 const notifier = require('google-home-notifier')
 const ngrok = require('ngrok')
 const bodyParser = require('body-parser')
+const YouTube = require('simple-youtube-api')
 const GoogleSpreadsheet = require('google-spreadsheet')
 const credentials = require('./credentials.json')
 const config = require('./config.json')
@@ -10,6 +11,7 @@ const config = require('./config.json')
 const app = express()
 const exec = require('child_process').exec
 const urlencodedParser = bodyParser.urlencoded({ extended: false })
+const youtube = new YouTube(config.youtubeKey)
 const logSheet = new GoogleSpreadsheet(config.sheetId)
 
 const serverPort = 8091
@@ -21,12 +23,20 @@ logSheet.useServiceAccountAuth(credentials, function (err) {
   })
 })
 
-app.post('/google-home-yt', urlencodedParser, function (req, res) {
+app.post('/google-home-yt', bodyParser.json(), async function (req, res) {
   if (!req.body) return res.sendStatus(400)
   console.log(req.body)
+  const text = req.body.text
+  if (!text) return res.sendStatus(422)
 
-  const vid = req.body.v // 'wUpItG7dOGU', 'K54CYowOqxM', etc...
-  if (!vid) return res.sendStatus(422)
+  const playlists = await youtube.searchPlaylists(`${text} official`, 3, { part: 'id' })
+  const playlist = playlists[0]
+  console.log(playlist)
+  const videos = await playlist.getVideos()
+  const track = Math.floor(Math.random() * videos.length)
+  console.log('Track: '+(track+1))
+  console.log(videos[track])
+  const vid = videos[track].id
 
   notifier.ip('192.168.11.10', 'ja')
   notifier.device('Google Home', 'ja')
@@ -39,7 +49,7 @@ app.post('/google-home-yt', urlencodedParser, function (req, res) {
 
   exec('youtube-dl -f bestaudio -g https://www.youtube.com/watch?v='+vid, (error, stdout, stderr) => {
     if (error !== null) {
-      message = 'exec error: '+error
+      const message = 'exec error: '+error
       console.log(message)
       return res.send(message)
     }
@@ -83,8 +93,8 @@ app.listen(serverPort, function () {
   ngrok.connect(serverPort, function (err, url) {
     console.log('Endpoints: ' + url + '/google-home-yt')
     console.log('POST example:')
-    console.log('curl -X POST -d "v=wUpItG7dOGU" ' + url + '/google-home-yt')
-    console.log('curl -X POST ' + url + '/google-home-playlist')
+    console.log(`curl -X POST -H "Content-type:application/json" -d '{"text": "Perfume"}' ${url}/google-home-yt`)
+    // console.log('curl -X POST ' + url + '/google-home-playlist')
     sheet.getCells({
       'min-row': 1,
       'max-row': 1,
@@ -93,7 +103,7 @@ app.listen(serverPort, function () {
       'return-empty': true
     }, function (error, cells) {
       var cell = cells[0]
-      cell.value = url + '/google-home-playlist'
+      cell.value = url + '/google-home-yt'
       cell.save()
       console.log('spread sheet update successful!!')
     })
